@@ -41,8 +41,8 @@ def data_gen(T, Vm):
     b = 0.07780 * ((R * Tc_NO) / Pc_NO)
     kappa = 0.37464 + (1.54226 * omega_NO) - (0.26992 * omega_NO ** 2)
     alpha = (1 + kappa * (1 - Tr_NO ** 0.5)) ** 2
-    P = ((R * T) / (Vm - b)) - ((a * alpha) / (Vm ** 2 - 2 * b * Vm - b ** 2))
-    return P
+    P_NO = ((R * T) / (Vm - b)) - ((a * alpha) / (Vm ** 2 - 2 * b * Vm - b ** 2))
+    return P_NO
 
 
 def Nitric_Oxide_Graph(T):
