@@ -1,11 +1,10 @@
-import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter, FixedLocator
-from scipy.optimize import newton
 import CubicEquationSolver
+from scipy.interpolate import make_interp_spline, BSpline
 
-R = 8.314e-2  # universal gas constant, m3-bar/K-mol
+
+R = 8.314e-5  # universal gas constant, m3-bar/mol
 # for oxygen:
 Pc = 50.0
 Tc = 154.58
@@ -34,7 +33,7 @@ def Vm_Calc(T, P):
     A = a * P / (R ** 2 * T ** 2)
     B = (b * P) / (R * T)
     liquid_root = CubicEquationSolver.solve(1, (B - 1), (A - 3 * B ** 2 - 2 * B), (A * B - B ** 2 - B ** 3)) * R * T / P
-    return liquid_root[np.where(liquid_root > 0, liquid_root, np.inf).argmax() - 1]
+    return liquid_root#[np.where(liquid_root > 0, liquid_root, np.inf).argmax() - 1]
 
 
 def data_gen(T, Vm):
@@ -48,14 +47,13 @@ def data_gen(T, Vm):
 
 
 def Nitric_Oxide_Graph(T):
-    n = 100
+    n = 50
     Vm_list = []
     p_list = []
     b = 0.07780 * ((R * Tc_NO) / Pc_NO)
-    print(b)
-    Vm_list.append(0.0433)
+    Vm_list.append(1.5e-5)
     for i in range(n-1):
-        Vm_list.append(Vm_list[i - 1]+0.00001)
+        Vm_list.append(Vm_list[i - 1]* 1.2)
     for j in range(n):
         p_list.append(data_gen(T, Vm_list[j]))
     return Vm_list, p_list
@@ -71,11 +69,15 @@ def plot_NO_100():
     ax.set_xlabel('Molar Volume(m^3/mol)')
     ax.set_ylabel('Pressure(bar)')
     ax.set_xscale('log')
+    ax.set_xlim(2e-5,4e-5)
+    ax.set_ylim(-45000,50000)
     ax.grid(linestyle='--')
     plt.title('Vm vs P for NO')
     plt.legend()
 
     plt.show()
+
+
 
 while True:
     choice = input("Part A" + '\n' + '1.Calculate Pressure for O2 with Temperature and Molar Volume' + '\n' +
