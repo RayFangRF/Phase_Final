@@ -1,23 +1,26 @@
+import sys
+
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+import pandas as pd
+from shapely.geometry import LineString
+from matplotlib.ticker import FormatStrFormatter, FixedLocator
 import CubicEquationSolver
-from scipy.interpolate import make_interp_spline, BSpline
 
-
-R = 8.314e-5  # universal gas constant, m3-bar/mol
+R = 8.314  # universal gas constant, m3-bar/K-mol
 # for oxygen:
 Pc = 50.0
 Tc = 154.58
 omega = 0.022
 
 # for Nitric Oxide:
-Pc_NO = 64.8
+Pc_NO = 6.485e6
 Tc_NO = 180.2
 omega_NO = 0.583
 
 
 def pressure_Calc(T, Vm):
-    Tr = T / Tc_NO
+    Tr = T / Tc
     a = 0.45724 * ((R ** 2 * Tc ** 2) / Pc)
     b = 0.07780 * ((R * Tc) / Pc)
     kappa = 0.37464 + (1.54226 * omega) - (0.26992 * omega ** 2)
@@ -36,46 +39,139 @@ def Vm_Calc(T, P):
     return liquid_root#[np.where(liquid_root > 0, liquid_root, np.inf).argmax() - 1]
 
 
+# Solves for the pressures of an T degree Isotherm given a set of molar volumes
 def data_gen(T, Vm):
     Tr_NO = T / Tc_NO
     a = 0.45724 * ((R ** 2 * Tc_NO ** 2) / Pc_NO)
     b = 0.07780 * ((R * Tc_NO) / Pc_NO)
     kappa = 0.37464 + (1.54226 * omega_NO) - (0.26992 * omega_NO ** 2)
     alpha = (1 + kappa * (1 - Tr_NO ** 0.5)) ** 2
-    P = ((R * T) / (Vm - b)) - ((a * alpha) / (Vm ** 2 - 2 * b * Vm - b ** 2))
+    P = ((R * T) / (Vm - b)) - ((a * alpha) / (Vm ** 2 + 2 * b * Vm - b ** 2))
     return P
 
 
+# Obtains values to plot NO graph, including P_min and P_max
 def Nitric_Oxide_Graph(T):
-    n = 50
-    Vm_list = []
-    p_list = []
-    b = 0.07780 * ((R * Tc_NO) / Pc_NO)
-    Vm_list.append(1.5e-5)
-    for i in range(n-1):
-        Vm_list.append(Vm_list[i - 1]* 1.2)
-    for j in range(n):
-        p_list.append(data_gen(T, Vm_list[j]))
-    return Vm_list, p_list
+    # Initializing function molar volume (x) and pressure values (y)
+    n = 1000000
+    Vm_list = np.linspace(2.0e-5, 1.0, n)
+    p_list = np.zeros(n)
+
+    # Initializing min/max values and indices
+    P_min = 0
+    P_max = 0
+    P_minIndex = 0
+    P_maxIndex = 0
+
+    # Solves for pressure values using data_gen
+    for i in range(n):
+        p_list[i] = data_gen(T, Vm_list[i])
+        if (p_list[i - 1] < 0 and p_list[i] > 0):
+            print()#p_list[i - 1], " ", p_list[i]
+        if (p_list[i] < P_min):
+            P_min = p_list[i]
+            P_minIndex = i
+            #print(P_minIndex)
+
+    # Sorting to find maximum
+    for i in range(P_minIndex, n):
+
+        if (p_list[i] > P_max):
+            P_max = p_list[i]
+            P_maxIndex = i
+
+    # Creates coordinate points for min and max
+    a = [Vm_list[P_minIndex], P_min]
+    b = [Vm_list[P_maxIndex], P_max]
+
+    return Vm_list, p_list, a, b
+
+
+def partition(arr, low, high):
+    i = (low - 1)  # index of smaller element
+    pivot = arr[high]  # pivot
+
+    for j in range(low, high):
+
+        # If current element is smaller than or
+        # equal to pivot
+        if arr[j] <= pivot:
+            # increment index of smaller element
+            i = i + 1
+            arr[i], arr[j] = arr[j], arr[i]
+
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+
+
+def quickSort(arr, low, high):
+    if len(arr) == 1:
+        return arr
+    if low < high:
+        # pi is partitioning index, arr[p] is now
+        # at right place
+        pi = partition(arr, low, high)
+
+        # Separately sort elements before
+        # partition and after partition
+        quickSort(arr, low, pi - 1)
+        quickSort(arr, pi + 1, high)
 
 
 def plot_NO_100():
-    x = Nitric_Oxide_Graph(100)[0]
-    y = Nitric_Oxide_Graph(100)[1]
+    x, y, a, b = Nitric_Oxide_Graph(100)
+    f = np.linspace(1.0e-5, 1.0, 1000000)
+    g = np.full(len(f), 100)
     fig = plt.figure()
     fig.set_size_inches(10.5, 10.5)
     ax = fig.add_subplot(1, 1, 1)
+    ax.plot(f, g, color='red', lw=2)
     ax.plot(x, y, color='blue', lw=2, label="T=100k")
+    line_1 = LineString(np.column_stack((f, g)))
+    line_2 = LineString(np.column_stack((x, y)))
+    intersection = line_1.intersection(line_2)
+    print(intersection)
+    #idx = np.argwhere(np.diff(np.sign(g-y))).flatten()
+    #ax.plot(x[idx], y[idx], 'ro')
     ax.set_xlabel('Molar Volume(m^3/mol)')
-    ax.set_ylabel('Pressure(bar)')
+    ax.set_ylabel('Pressure(Pa)')
     ax.set_xscale('log')
-    ax.set_xlim(2e-5,4e-5)
-    ax.set_ylim(-45000,50000)
     ax.grid(linestyle='--')
     plt.title('Vm vs P for NO')
     plt.legend()
 
     plt.show()
+
+    return a, b
+
+
+def big_chungus(pressure_guess):
+    return 'haha', 'hehe'
+
+
+def Guess_n_check(pressure_guesses):
+    i = len(pressure_guesses / 2)
+    AreaI, AreaII = big_chungus(pressure_guesses[i])
+    if abs(1 - AreaI / AreaII) > 0.01:
+        return pressure_guesses[i]
+    while True:
+        if AreaI > AreaII:
+            i -= 1
+            AreaI, AreaII = big_chungus(pressure_guesses[i])
+            if abs(1 - AreaI / AreaII) > 0.01:
+                return pressure_guesses[i]
+            elif AreaII > AreaI:
+                new_pressures = np.linspace(pressure_guesses[i], pressure_guesses[i+1], 50)
+                Guess_n_check(new_pressures)
+        elif AreaII > AreaI:
+            i += 1
+            AreaI, AreaII = big_chungus(pressure_guesses[i])
+            if abs(1 - AreaI / AreaII) > 0.01:
+                return pressure_guesses[i]
+            elif AreaI > AreaII:
+                new_pressures = np.linspace(pressure_guesses[i-1], pressure_guesses[i], 50)
+                Guess_n_check(new_pressures)
+
 
 
 
@@ -96,4 +192,19 @@ while True:
         P = float(P)
         print('The Molar Volume is:', Vm_Calc(temp, P), 'm^3/mol')
     elif choice == 3:
-        plot_NO_100()
+        a, b = plot_NO_100()
+        #print(a[0], " ", a[1])
+        #print(b[0], " ", b[1])
+        # Part B) Using the algorithm to find P_vap
+        # Beginning with a guess of 0
+        p_guess = 0.0
+        plt.show()
+    elif choice == 4:
+        n = 1000000
+        V, P, a, b = Nitric_Oxide_Graph(100)
+        p_guess = 100
+        for i in range(n):
+            if(abs(1-P[i]/p_guess) < 0.01):
+                print(V[i], " ", P[i])
+        AreaI = 0
+        AreaII = 0
