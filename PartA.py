@@ -1,9 +1,11 @@
 import sys
 
 import numpy as np
+from scipy import integrate
 from matplotlib import pyplot as plt
 import pandas as pd
 from shapely.geometry import LineString
+from scipy.interpolate import InterpolatedUnivariateSpline
 from matplotlib.ticker import FormatStrFormatter, FixedLocator
 import CubicEquationSolver
 
@@ -35,6 +37,7 @@ def Vm_Calc(T, P):
     b = 0.07780 * ((R * Tc) / Pc)
     A = a * P / (R ** 2 * T ** 2)
     B = (b * P) / (R * T)
+    print(A,B)
     liquid_root = CubicEquationSolver.solve(1, (B - 1), (A - 3 * B ** 2 - 2 * B), (A * B - B ** 2 - B ** 3)) * R * T / P
     return liquid_root#[np.where(liquid_root > 0, liquid_root, np.inf).argmax() - 1]
 
@@ -49,12 +52,22 @@ def data_gen(T, Vm):
     P = ((R * T) / (Vm - b)) - ((a * alpha) / (Vm ** 2 + 2 * b * Vm - b ** 2))
     return P
 
+def data_gen2(Vm):
+    T = 100
+    Tr_NO = T / Tc_NO
+    a = 0.45724 * ((R ** 2 * Tc_NO ** 2) / Pc_NO)
+    b = 0.07780 * ((R * Tc_NO) / Pc_NO)
+    kappa = 0.37464 + (1.54226 * omega_NO) - (0.26992 * omega_NO ** 2)
+    alpha = (1 + kappa * (1 - Tr_NO ** 0.5)) ** 2
+    P = ((R * T) / (Vm - b)) - ((a * alpha) / (Vm ** 2 + 2 * b * Vm - b ** 2))
+    return P
+
 
 # Obtains values to plot NO graph, including P_min and P_max
 def Nitric_Oxide_Graph(T):
     # Initializing function molar volume (x) and pressure values (y)
     n = 1000000
-    Vm_list = np.linspace(2.0e-5, 1.0, n)
+    Vm_list = np.linspace(2.0e-5, 50, n)
     p_list = np.zeros(n)
 
     # Initializing min/max values and indices
@@ -87,50 +100,12 @@ def Nitric_Oxide_Graph(T):
     return Vm_list, p_list, a, b
 
 
-def partition(arr, low, high):
-    i = (low - 1)  # index of smaller element
-    pivot = arr[high]  # pivot
-
-    for j in range(low, high):
-
-        # If current element is smaller than or
-        # equal to pivot
-        if arr[j] <= pivot:
-            # increment index of smaller element
-            i = i + 1
-            arr[i], arr[j] = arr[j], arr[i]
-
-    arr[i + 1], arr[high] = arr[high], arr[i + 1]
-    return i + 1
-
-
-def quickSort(arr, low, high):
-    if len(arr) == 1:
-        return arr
-    if low < high:
-        # pi is partitioning index, arr[p] is now
-        # at right place
-        pi = partition(arr, low, high)
-
-        # Separately sort elements before
-        # partition and after partition
-        quickSort(arr, low, pi - 1)
-        quickSort(arr, pi + 1, high)
-
-
 def plot_NO_100():
     x, y, a, b = Nitric_Oxide_Graph(100)
-    f = np.linspace(1.0e-5, 1.0, 1000000)
-    g = np.full(len(f), 100)
     fig = plt.figure()
     fig.set_size_inches(10.5, 10.5)
     ax = fig.add_subplot(1, 1, 1)
-    ax.plot(f, g, color='red', lw=2)
     ax.plot(x, y, color='blue', lw=2, label="T=100k")
-    line_1 = LineString(np.column_stack((f, g)))
-    line_2 = LineString(np.column_stack((x, y)))
-    intersection = line_1.intersection(line_2)
-    print(intersection)
     #idx = np.argwhere(np.diff(np.sign(g-y))).flatten()
     #ax.plot(x[idx], y[idx], 'ro')
     ax.set_xlabel('Molar Volume(m^3/mol)')
@@ -146,7 +121,18 @@ def plot_NO_100():
 
 
 def big_chungus(pressure_guess):
-    return 'haha', 'hehe'
+    x, y, a, b = Nitric_Oxide_Graph(100)
+    f = np.linspace(1.0e-5, 1.0, 1000000)
+    g = np.full(len(f), pressure_guess)
+    line_1 = LineString(np.column_stack((f, g)))
+    line_2 = LineString(np.column_stack((x, y)))
+    intersection = line_1.intersection(line_2)
+    print(intersection)
+    x_y_curve1 = np.column_stack((f, g))
+    x_y_curve2 = np.column_stack((x, y))
+
+    mom= integrate.quad(data_gen2,intersection[0].x, intersection[1].x)
+    print(abs(mom[0]))
 
 
 def Guess_n_check(pressure_guesses):
@@ -200,11 +186,5 @@ while True:
         p_guess = 0.0
         plt.show()
     elif choice == 4:
-        n = 1000000
-        V, P, a, b = Nitric_Oxide_Graph(100)
-        p_guess = 100
-        for i in range(n):
-            if(abs(1-P[i]/p_guess) < 0.01):
-                print(V[i], " ", P[i])
-        AreaI = 0
-        AreaII = 0
+        a = input('what is big chungus')
+        big_chungus(a)
