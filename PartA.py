@@ -71,38 +71,30 @@ def Nitric_Oxide_Graph(T):
     Vm_list = np.linspace(2.0e-5, 50, n)
     p_list = np.zeros(n)
 
-    # Initializing min/max values and indices
-    P_min = 0
-    P_max = 0
-    P_minIndex = 0
-    P_maxIndex = 0
 
     # Solves for pressure values using data_gen
     for i in range(n):
         p_list[i] = data_gen(T, Vm_list[i])
-        if (p_list[i - 1] < 0 and p_list[i] > 0):
-            print()  # p_list[i - 1], " ", p_list[i]
-        if (p_list[i] < P_min):
-            P_min = p_list[i]
-            P_minIndex = i
-            # print(P_minIndex)
+    return Vm_list, p_list
 
-    # Sorting to find maximum
-    for i in range(P_minIndex, n):
+def Nitric_Oxide_Graph_Visual(T):
+    # Initializing function molar volume (x) and pressure values (y)
 
-        if (p_list[i] > P_max):
-            P_max = p_list[i]
-            P_maxIndex = i
-
-    # Creates coordinate points for min and max
-    a = [Vm_list[P_minIndex], P_min]
-    b = [Vm_list[P_maxIndex], P_max]
-
-    return Vm_list, p_list, a, b
+    Vm_list = np.linspace(2.0e-5, 1, n)
+    p_list = np.zeros(n)
 
 
-def plot_NO_100():
-    x, y, a, b = Nitric_Oxide_Graph(100)
+    # Solves for pressure values using data_gen
+    for i in range(n):
+        p_list[i] = data_gen(T, Vm_list[i])
+    return Vm_list, p_list
+
+
+def plot_NO_100(visual):
+    if visual:
+        x, y = Nitric_Oxide_Graph_Visual(100)
+    else:
+        x, y = Nitric_Oxide_Graph(100)
     fig = plt.figure()
     fig.set_size_inches(10.5, 10.5)
     ax = fig.add_subplot(1, 1, 1)
@@ -116,9 +108,9 @@ def plot_NO_100():
     plt.title('Vm vs P for NO')
     plt.legend()
 
-    plt.draw()
+    plt.show()
 
-    return a, b
+
 
 
 def big_chungus(pressure_guess, x, y):
@@ -128,14 +120,6 @@ def big_chungus(pressure_guess, x, y):
     line_2 = LineString(np.column_stack((x, y)))
     intersection = line_1.intersection(line_2)
     print(intersection)
-
-    third_intersect = 0
-    for i in range(n):
-        if (int(y[i]) == int(pressure_guess)):
-            third_intersect = x[i]
-            print(third_intersect)
-            break
-
     mom = integrate.quad(data_gen2, intersection[0].x, intersection[1].x)
     dad = integrate.quad(data_gen2, intersection[1].x, intersection[2].x)
 
@@ -185,18 +169,13 @@ while True:
         P = float(P)
         print('The Molar Volume is:', Vm_Calc(temp, P), 'm^3/mol')
     elif choice == 3:
-        a, b = plot_NO_100()
-        # print(a[0], " ", a[1])
-        # print(b[0], " ", b[1])
+        plot_NO_100(True)
 
-        # Part B) Using the algorithm to find P_vap
-        # Beginning with a guess of 0
-        p_guess = 0.0
-        plt.show()
     elif choice == 4:
-        x,y,a,b = Nitric_Oxide_Graph(100)
+        x,y = Nitric_Oxide_Graph(100)
         guesses = np.linspace(71000, 729231, 100)
         ahaha = Guess_n_check(guesses,x,y)
+        x, y = Nitric_Oxide_Graph_Visual(100)
         fig = plt.figure()
         fig.set_size_inches(10.5, 10.5)
         ax = fig.add_subplot(1, 1, 1)
@@ -207,6 +186,7 @@ while True:
         ax.set_ylabel('Pressure(Pa)')
         ax.set_xscale('log')
         ax.grid(linestyle='--')
+        ax.set_xlim(1e-5, 0.004)
         plt.title('Vm vs P for NO')
         plt.legend()
         f = np.linspace(1.0e-5, 50, 1000000)
